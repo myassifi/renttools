@@ -35,6 +35,9 @@ ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 \
     GIT_COMMIT_SHA=${GIT_COMMIT_SHA}
 # Keep tsx and the Prisma DDL runner for the separately executed migration step.
 COPY --from=build --chown=node:node /app /app
-USER node
+# Volumes (e.g. Railway's /data) mount root-owned — the entrypoint chowns
+# them to node, then drops privileges. Runs as root only for the chown.
+COPY --chmod=0755 deploy/docker/entrypoint.sh /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
 EXPOSE 3000
 CMD ["npm", "run", "start"]

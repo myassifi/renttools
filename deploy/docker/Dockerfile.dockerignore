@@ -22,3 +22,7 @@ public/uploads/
 **/*.sqlite*
 **/*.pem
 **/*.key
+
+!deploy/
+!deploy/docker/
+!deploy/docker/entrypoint.sh
