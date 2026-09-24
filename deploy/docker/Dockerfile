@@ -23,10 +23,7 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
     NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN} \
     NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID} \
     NEXT_PUBLIC_LEGACY_PASSPORT_OCR_ENABLED=${NEXT_PUBLIC_LEGACY_PASSPORT_OCR_ENABLED}
-# The upload token is a BuildKit secret, never a build argument or image ENV.
-RUN --mount=type=secret,id=sentry_auth_token \
-    SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null || true)" \
-    DATABASE_URL=file:/tmp/build.db JWT_SECRET=ci-only-build CRON_SECRET=ci-only-build \
+RUN DATABASE_URL=file:/tmp/build.db JWT_SECRET=ci-only-build CRON_SECRET=ci-only-build \
     npm run build \
     && rm -rf .next/cache
 
