@@ -1,0 +1,130 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
+import { canManageProperty } from "@/lib/ownership";
+import { reservationNights } from "@/lib/reservation-dates";
+import { formatCents, DEFAULT_CURRENCY } from "@/lib/finance";
+
+export const dynamic = "force-dynamic";
+
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function platformLabel(platform: string): string {
+  const p = (platform || "").toLowerCase();
+  if (p === "airbnb") return "Airbnb";
+  if (p === "booking") return "Booking.com";
+  if (p === "direct") return "Direct booking";
+  return platform;
+}
+
+/**
+ * Print-ready guest receipt (HTML). Shows what the GUEST paid —
+ * accommodation + cleaning fee + total (gross). Host-side numbers
+ * (platform fee, payout) are deliberately never rendered here.
+ * The host opens it in a tab and prints to PDF or screenshots it.
+ */
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const numId = parseInt(id);
+    if (isNaN(numId)) {
+      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+    }
+
+    const reservation = await prisma.reservation.findUnique({
+      where: { id: numId },
+      include: { property: { include: { user: { select: { currency: true, username: true } } } } },
+    });
+    if (
+      !reservation ||
+      !(await canManageProperty(reservation.propertyId, session.userId, session.role))
+    ) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const currency = reservation.property.user.currency || DEFAULT_CURRENCY;
+    const fmt = (c: number | null | undefined) =>
+      c == null ? "—" : formatCents(c, currency, "en");
+
+    const checkIn = new Date(reservation.checkIn).toISOString().slice(0, 10);
+    const checkOut = new Date(reservation.checkOut).toISOString().slice(0, 10);
+    const nights = reservationNights(checkIn, checkOut);
+    const gross = reservation.grossCents;
+    const cleaning = reservation.cleaningFeeCents;
+    const accommodation =
+      gross != null && cleaning != null ? gross - cleaning : gross != null ? gross : null;
+
+    const rows: string[] = [];
+    rows.push(
+      `<tr><td>Accommodation · ${nights} ${nights === 1 ? "night" : "nights"} · ${esc(checkIn)} → ${esc(checkOut)}</td><td class="amt">${fmt(accommodation)}</td></tr>`,
+    );
+    if (cleaning != null && cleaning > 0) {
+      rows.push(`<tr><td>Cleaning fee</td><td class="amt">${fmt(cleaning)}</td></tr>`);
+    }
+    if (gross == null) {
+      rows.push(`<tr><td>Total</td><td class="amt">—</td></tr>`);
+    }
+
+    const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Receipt ${numId} — ${esc(reservation.property.name)}</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 40px 16px; color: #1c1c1e; background: #f5f5f4; }
+  .sheet { max-width: 560px; margin: 0 auto; background: #fff; border: 1px solid #e7e5e4; border-radius: 12px; padding: 36px 40px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .meta { color: #78716c; font-size: 13px; margin-bottom: 28px; }
+  .parties { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 28px; font-size: 14px; }
+  .parties .lbl { color: #a8a29e; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td { padding: 10px 0; border-bottom: 1px solid #f0eeec; vertical-align: top; }
+  td.amt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .total td { border-bottom: none; border-top: 2px solid #1c1c1e; font-weight: 700; font-size: 16px; padding-top: 14px; }
+  .foot { margin-top: 32px; font-size: 12px; color: #a8a29e; }
+  @media print { body { background: #fff; padding: 0; } .sheet { border: none; border-radius: 0; } }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <h1>Receipt</h1>
+    <div class="meta">№ RT-${numId} · Issued ${new Date().toISOString().slice(0, 10)} · ${esc(platformLabel(reservation.platform))}</div>
+    <div class="parties">
+      <div><div class="lbl">From</div><div>${esc(reservation.property.name)}</div><div style="color:#78716c">${esc(reservation.property.user.username)}</div></div>
+      <div><div class="lbl">To</div><div>${esc(reservation.name)}</div></div>
+    </div>
+    <table>
+      ${rows.join("\n      ")}
+      <tr class="total"><td>Total</td><td class="amt">${fmt(gross)}</td></tr>
+    </table>
+    <div class="foot">Generated by RentTools · This receipt confirms the amounts above were paid by the guest.</div>
+  </div>
+  <script>if (location.search.includes("print=1")) window.print();</script>
+</body>
+</html>`;
+
+    return new NextResponse(html, {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+  } catch (err) {
+    console.error("Route error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

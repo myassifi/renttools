@@ -1,0 +1,75 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
+import { canManageProperty, isPropertyOwner } from "@/lib/ownership";
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { id } = await params;
+    const numId = parseInt(id);
+    if (isNaN(numId)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+    if (!(await canManageProperty(numId, session.userId, session.role))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    const body = await request.json();
+    const data: Record<string, unknown> = {};
+
+    if (body.name !== undefined) data.name = body.name;
+    if (body.minNights !== undefined) data.minNights = body.minNights;
+    if (body.checkInTime !== undefined) data.checkInTime = body.checkInTime;
+    if (body.checkOutTime !== undefined) data.checkOutTime = body.checkOutTime;
+    if (body.bookingWindow !== undefined) data.bookingWindow = body.bookingWindow;
+    if (body.cleaningEnabled !== undefined) data.cleaningEnabled = !!body.cleaningEnabled;
+    // Smart-lock binding — set both or clear both (null).
+    if (body.lockDeviceId !== undefined) {
+      data.lockDeviceId = typeof body.lockDeviceId === "string" ? body.lockDeviceId : null;
+      data.lockDeviceName =
+        typeof body.lockDeviceName === "string" ? body.lockDeviceName : null;
+    }
+
+    const property = await prisma.property.update({
+      where: { id: numId },
+      data,
+    });
+    await logAudit(session.userId, "update", "property", numId, data);
+    return NextResponse.json(property);
+  } catch (err) {
+    console.error("Route error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { id } = await params;
+    const numId = parseInt(id);
+    if (isNaN(numId)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+    // Only the owner can delete a property — managers cannot.
+    if (!(await isPropertyOwner(numId, session.userId))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    await prisma.property.delete({ where: { id: numId } });
+    await logAudit(session.userId, "delete", "property", numId);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Route error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

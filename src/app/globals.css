@@ -1,0 +1,545 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+/* Hybrid dark theme: Apple precision + Airbnb warmth */
+.dark {
+  --background: #111113;
+  --foreground: #e0e0e4;
+  --card: #18181b;
+  --card-foreground: #e0e0e4;
+  --popover: #18181b;
+  --popover-foreground: #e0e0e4;
+  --primary: #e8e8ec;
+  --primary-foreground: #111113;
+  --secondary: #1e1e22;
+  --secondary-foreground: #a0a0a8;
+  --muted: #1e1e22;
+  --muted-foreground: #a0a0a8;
+  --accent: #1e1e22;
+  --accent-foreground: #e0e0e4;
+  --destructive: #ef4444;
+  --border: #27272b;
+  --input: #1e1e22;
+  --ring: #e8e8ec;
+  --chart-1: #e8e8ec;
+  --chart-2: #34d399;
+  --chart-3: #fbbf24;
+  --chart-4: #a78bfa;
+  --chart-5: #fb923c;
+  --sidebar: #111113;
+  --sidebar-foreground: #e0e0e4;
+  --sidebar-primary: #e8e8ec;
+  --sidebar-primary-foreground: #111113;
+  --sidebar-accent: #18181b;
+  --sidebar-accent-foreground: #e0e0e4;
+  --sidebar-border: #27272b;
+  --sidebar-ring: #e8e8ec;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, sans-serif;
+    /* 16px base — closer to Airbnb / industry comfort. Was 15px which
+       made dashboard chrome feel cramped. */
+    font-size: 16px;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  html {
+    @apply font-sans;
+    /* Reserve scrollbar space always, even on short pages (e.g. /onboard
+       fits in the viewport on desktop). Without this, navigating from a
+       page that scrolls (home) to one that doesn't (onboard) shifts the
+       centered content right by ~7-8px because the scrollbar disappears.
+       `stable` keeps a 15-16px strip reserved on the right so layout is
+       horizontally identical across every page. */
+    scrollbar-gutter: stable;
+  }
+}
+
+/* =========================================================
+   Editorial design tokens (used by /, /onboard, /privacy, /terms,
+   /blog). Light by default, theme-toggle flips the .dark class on
+   <html>. Other tokens above stay app-only (dashboard, etc.).
+========================================================= */
+.editorial {
+  --bg: #fafaf9;
+  --bg-2: #f4f4f2;
+  --bg-3: #ebebe7;
+  --ink: #0e0e10;
+  --ink-2: #3a3a40;
+  --ink-3: #6b6b73;
+  --ink-4: #9a9aa3;
+  --line: rgba(14, 14, 16, 0.09);
+  --line-2: rgba(14, 14, 16, 0.16);
+  --m-accent: #ff385c;
+  --m-accent-2: #ff6680;
+  --m-accent-soft: #fff0f3;
+  /* Background-pill tints — strong enough to be readable on the warm
+     off-white hero, gentle enough to stay decorative. Tuned per theme. */
+  --pill-coral: rgba(255, 56, 92, 0.14);
+  --pill-blue: rgba(0, 113, 227, 0.13);
+
+  /* Cleaning / buffer chip. Tuned for legibility on the warm off-white
+     bg in light mode — solid amber-100 fill + amber-800 fg gives a
+     proper readable badge instead of a wash; tasteful amber-600 ring
+     anchors it visually. Cell-bg is the very soft tint painted on the
+     day cell behind the chip in the calendar. */
+  --cleaning-fg: #92400e;
+  --cleaning-bg: #fef3c7;
+  --cleaning-border: rgba(217, 119, 6, 0.32);
+  --cleaning-cell-bg: rgba(217, 119, 6, 0.06);
+
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.011em;
+}
+.dark .editorial {
+  --bg: #0d1117;
+  --bg-2: #15191f;
+  --bg-3: #1c2129;
+  --ink: #f0f3f7;
+  --ink-2: #c2c6cd;
+  --ink-3: #8a8f97;
+  --ink-4: #5c616a;
+  --line: rgba(240, 243, 247, 0.08);
+  --line-2: rgba(240, 243, 247, 0.14);
+  --m-accent: #ff5577;
+  --m-accent-2: #ff7b96;
+  --m-accent-soft: rgba(255, 85, 119, 0.12);
+  --pill-coral: rgba(255, 85, 119, 0.16);
+  --pill-blue: rgba(110, 168, 254, 0.14);
+  /* Dark mode: amber-300 reads warmer than 400 against the slate-blue
+     bg without losing the cleaning-amber identity. Slightly stronger
+     bg + border than light to give the chip presence on dark cells. */
+  --cleaning-fg: #fcd34d;
+  --cleaning-bg: rgba(252, 211, 77, 0.14);
+  --cleaning-border: rgba(252, 211, 77, 0.34);
+  --cleaning-cell-bg: rgba(252, 211, 77, 0.06);
+}
+
+.editorial .display {
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+.editorial .display-tight {
+  letter-spacing: -0.028em;
+  line-height: 1.05;
+}
+.editorial .mono {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-feature-settings: "ss01", "cv11";
+}
+/* Calendar-month grid: cells are wider than tall (80×64 desktop, 56×48
+   mobile) so the pattern feels like an Airbnb / Booking month view, not
+   generic graph paper. The mask fades the edges so the headline reads
+   cleanly over the centre. Cell dims live in --grid-cell-w/h so the
+   .calendar-pills positions stay aligned across breakpoints. */
+.editorial .grid-bg,
+.editorial .calendar-pills {
+  --grid-cell-w: 80px;
+  --grid-cell-h: 64px;
+}
+@media (max-width: 640px) {
+  .editorial .grid-bg,
+  .editorial .calendar-pills {
+    --grid-cell-w: 56px;
+    --grid-cell-h: 48px;
+  }
+}
+.editorial .grid-bg {
+  background-image: linear-gradient(to right, var(--line) 1px, transparent 1px),
+                    linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: var(--grid-cell-w) var(--grid-cell-h);
+  mask-image: radial-gradient(ellipse 70% 60% at center 45%, black 35%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at center 45%, black 35%, transparent 80%);
+}
+
+/* Faint coloured strips overlaid on the grid that suggest multi-day
+   bookings. Four pills (two coral / two blue) placed at row 2, 3, 4, 5
+   of the .grid-bg above. Use --pill-coral / --pill-blue tokens so each
+   theme's tuning lives in one place. Pill column offsets are mid-cell
+   (cell-w / 2); row offsets are 28% of cell-h to sit ~1/3 down each row. */
+.editorial .calendar-pills {
+  background-image:
+    /* Row 2 — coral pill, cells 2-5 (4-day stay) */
+    linear-gradient(
+      to right,
+      transparent calc(2 * var(--grid-cell-w) + var(--grid-cell-w) / 2),
+      var(--pill-coral) calc(2 * var(--grid-cell-w) + var(--grid-cell-w) / 2),
+      var(--pill-coral) calc(5 * var(--grid-cell-w) + var(--grid-cell-w) / 2),
+      transparent calc(5 * var(--grid-cell-w) + var(--grid-cell-w) / 2)
+    ),
+    /* Row 3 — blue pill, cells 4-7 (3-day stay) */
+    linear-gradient(
+      to right,
+      transparent calc(4 * var(--grid-cell-w) + var(--grid-cell-w) / 2),
+      var(--pill-blue) calc(4 * var(--grid-cell-w) + var(--grid-cell-w) / 2),
+      var(--pill-blue) calc(7 * var(--grid-cell-w) + var(--grid-cell-w) / 2),
+      transparent calc(7 * var(--grid-cell-w) + var(--grid-cell-w) / 2)
+    ),
+    /* Row 4 — coral pill, cells 1-3 */
+    linear-gradient(
+      to right,
+      transparent calc(1 * var(--grid-cell-w) + var(--grid-cell-w) / 2),
+      var(--pill-coral) calc(1 * var(--grid-cell-w) + var(--grid-cell-w) / 2),
+      var(--pill-coral) calc(3 * var(--grid-cell-w) + var(--grid-cell-w) / 2),
+      transparent calc(3 * var(--grid-cell-w) + var(--grid-cell-w) / 2)
+    ),
+    /* Row 5 — blue pill, cells 5-8 */
+    linear-gradient(
+      to right,
+      transparent calc(5 * var(--grid-cell-w) + var(--grid-cell-w) / 2),
+      var(--pill-blue) calc(5 * var(--grid-cell-w) + var(--grid-cell-w) / 2),
+      var(--pill-blue) calc(8 * var(--grid-cell-w) + var(--grid-cell-w) / 2),
+      transparent calc(8 * var(--grid-cell-w) + var(--grid-cell-w) / 2)
+    );
+  background-repeat: no-repeat;
+  background-position:
+    0 calc(2 * var(--grid-cell-h) + var(--grid-cell-h) * 0.28),
+    0 calc(3 * var(--grid-cell-h) + var(--grid-cell-h) * 0.28),
+    0 calc(4 * var(--grid-cell-h) + var(--grid-cell-h) * 0.28),
+    0 calc(5 * var(--grid-cell-h) + var(--grid-cell-h) * 0.28);
+  /* Slimmer pills (16px) so they look like a stay-bar inside a 64px row,
+     not a half-row colour band. */
+  background-size:
+    100% 22px,
+    100% 22px,
+    100% 22px,
+    100% 22px;
+  mask-image: radial-gradient(ellipse 75% 65% at center 50%, black 50%, transparent 95%);
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at center 50%, black 50%, transparent 95%);
+}
+
+/* Hero entrance — subtle blur-in, plays once. Intentionally cheap so
+   the first paint stays fast. */
+@keyframes hero-in {
+  from { opacity: 0; transform: translateY(10px); filter: blur(6px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.editorial .hero-in { animation: hero-in 700ms cubic-bezier(.2,.7,.2,1) both; }
+.editorial .hero-in-2 { animation-delay: 80ms; }
+.editorial .hero-in-3 { animation-delay: 200ms; }
+.editorial .hero-in-4 { animation-delay: 360ms; }
+.editorial .hero-in-5 { animation-delay: 520ms; }
+
+/* Squiggle underline — draws itself once on load. */
+@keyframes underline-draw {
+  from { stroke-dashoffset: 280; }
+  to { stroke-dashoffset: 0; }
+}
+.editorial .underline-draw {
+  stroke-dasharray: 280;
+  stroke-dashoffset: 280;
+  animation: underline-draw 900ms 700ms cubic-bezier(.2,.7,.2,1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editorial .hero-in,
+  .editorial .underline-draw {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* =========================================================
+   CLS isolation — tools to prevent layout shift when async UI
+   like banners and empty states mount after first paint.
+   `cls-isolate` confines the element's layout shift inside its
+   own subtree (no parent reflow). `animate-slide-down` makes
+   the eventual mount slide in instead of pop, so the visual
+   jump is softer even when CLS is unavoidable.
+========================================================= */
+.cls-isolate {
+  contain: layout style;
+}
+
+@keyframes slide-down {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-down {
+  animation: slide-down 220ms cubic-bezier(.2, .7, .2, 1) both;
+}
+
+/* Right-side panel entrance — used by the date-actions side panel
+   that replaced the popover. Slides in from the right edge. */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 240ms cubic-bezier(.2, .7, .2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-down { animation: none; }
+  .animate-slide-in-right { animation: none; }
+}
+
+/* Native select dropdown styling */
+select {
+  color-scheme: dark;
+}
+
+select option {
+  background-color: #18181b;
+  color: #e8e8ec;
+  padding: 8px 12px;
+}
+
+select option:checked {
+  background-color: #27272b;
+}
+
+select option:hover {
+  background-color: #27272b;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Blog post body — rendered from markdown via src/lib/markdown.ts.
+   The renderer emits a small whitelisted set of tags; this stylesheet
+   gives them a magazine-grade default look so editors don't need to
+   ship per-post CSS. Uses editorial CSS variables so it switches with
+   the theme toggle. `overflow-wrap: anywhere` keeps long URLs from
+   forcing the article wider than the viewport on mobile.
+
+   Scroll-margin on headings: the post page has a sticky 64-72px header,
+   so anchor jumps need to land below it. 96px = header + breathing room. */
+.prose-blog { overflow-wrap: anywhere; }
+.prose-blog > * + * { margin-top: 1.1em; }
+.prose-blog h2,
+.prose-blog h3,
+.prose-blog h4 { color: var(--ink); letter-spacing: -0.01em; scroll-margin-top: 96px; }
+.prose-blog h2 { font-size: 1.75rem; line-height: 1.25; font-weight: 700; margin-top: 2.5rem; margin-bottom: 0.6em; }
+.prose-blog h3 { font-size: 1.35rem; line-height: 1.3; font-weight: 600; margin-top: 2rem; margin-bottom: 0.5em; }
+.prose-blog h4 { font-size: 1.1rem; line-height: 1.35; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.4em; }
+/* First child needs no top margin — hero already supplies the gap. */
+.prose-blog > :first-child { margin-top: 0; }
+.prose-blog p { color: var(--ink-2); }
+/* Lead paragraph: first paragraph of the article is rendered slightly larger
+   so the reader has a smooth ramp from hero/excerpt down to body. */
+.prose-blog > p:first-of-type { font-size: 1.1em; color: var(--ink); }
+.prose-blog ul,
+.prose-blog ol { padding-left: 1.5rem; color: var(--ink-2); }
+.prose-blog ul { list-style: disc; }
+.prose-blog ol { list-style: decimal; }
+.prose-blog li { margin-bottom: 0.4em; }
+.prose-blog li > p { margin: 0; }
+.prose-blog a {
+  color: var(--m-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+.prose-blog a:hover { color: var(--m-accent-2); text-decoration-thickness: 2px; }
+.prose-blog code {
+  background: color-mix(in oklab, var(--m-accent) 12%, var(--bg-3));
+  color: var(--ink);
+  padding: 0.15em 0.4em;
+  border-radius: 0.3rem;
+  font-size: 0.88em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.prose-blog pre {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  padding: 1.1rem 1.25rem;
+  border-radius: 0.75rem;
+  overflow-x: auto;
+  font-size: 0.92em;
+  line-height: 1.6;
+}
+.prose-blog pre code { background: transparent; padding: 0; font-size: inherit; border-radius: 0; }
+/* Blockquote: oversized opening quote glyph + accent rule. The mark sits
+   absolutely so it doesn't disturb the text rhythm. */
+.prose-blog blockquote {
+  position: relative;
+  padding: 0.4rem 1.25rem 0.4rem 1.5rem;
+  border-left: 3px solid var(--m-accent);
+  color: var(--ink-2);
+  font-style: italic;
+  font-size: 1.05em;
+}
+.prose-blog blockquote p { color: var(--ink-2); }
+.prose-blog hr {
+  border: 0;
+  height: 1px;
+  background: var(--line);
+  margin: 2.5rem 0;
+}
+.prose-blog strong { color: var(--ink); font-weight: 600; }
+.prose-blog em { color: var(--ink); }
+/* Inline images: full-width within the prose column, rounded card with
+   subtle border so they read as figures rather than naked PNGs. */
+.prose-blog img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 1.75rem auto;
+  border-radius: 0.875rem;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+}
+/* Tables: the markdown renderer wraps every table in
+   `<div class="md-table-scroll">` so the wrapper handles horizontal
+   overflow on narrow viewports while the table itself stays a real
+   `display: table` element. The previous CSS put `display: block`
+   directly on <table>, which makes overflow-x work but kills cell
+   layout — <td> elements need a `display: table-row` parent inside
+   a `display: table` ancestor to distribute width. With block on
+   the table, cells fell back to inline behavior, the table shrunk
+   to the longest content cell, and the right side of the prose
+   column rendered as a wide empty band. */
+.prose-blog .md-table-scroll {
+  /* Negative margin lets the scroll viewport extend slightly past the
+     prose column edges on small screens so a wide table can still scroll
+     edge-to-edge — but we cap at 100% so the wrapper never visibly
+     overflows the prose container at desktop widths. */
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  /* Webkit-specific scrollbar polish: thin track that only appears
+     when the table actually overflows; matches the editorial vibe. */
+  -webkit-overflow-scrolling: touch;
+  margin: 1.5em 0;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--bg);
+}
+.prose-blog .md-table-scroll table {
+  /* Keep default `display: table` so cells get proper table-cell
+     behavior and distribute width evenly. `width: 100%` fills the
+     wrapper; `min-width: max-content` lets a content-rich table push
+     past 100% and trigger the wrapper's horizontal scroll instead of
+     squishing every cell down. `border-collapse: collapse` removes the
+     2px gap between adjacent cell borders. */
+  width: 100%;
+  min-width: max-content;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  /* Border + radius live on the wrapper now, so strip them off the
+     table itself to avoid a double border. */
+  border: 0;
+}
+.prose-blog th, .prose-blog td { border-bottom: 1px solid var(--line); padding: 0.55em 0.85em; text-align: left; vertical-align: top; }
+.prose-blog tr:last-child td { border-bottom: 0; }
+.prose-blog th { background: var(--bg-2); font-weight: 600; color: var(--ink); }
+
+/* iOS Safari zooms the page in when a focused form control has a
+   font-size below 16px. The app's inputs are intentionally compact
+   (text-xs / text-sm) on desktop; on phone widths we bump every form
+   control to 16px so focusing a field never triggers that zoom. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Safety net: no form control may exceed its container. Keeps native
+   date / time pickers (which iOS Safari renders wider than expected)
+   and any long-value field from pushing the page past the viewport. */
+input,
+select,
+textarea {
+  max-width: 100%;
+}

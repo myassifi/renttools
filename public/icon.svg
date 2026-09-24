@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="RentTools">
+  <!-- Coral brand square. The 120px corner radius matches the iOS / Android
+       home-screen mask treatment so the icon looks intentional everywhere
+       (rounded on iOS, rounded clipped on Android, full square in browsers
+       that use the SVG as-is). -->
+  <rect width="512" height="512" rx="120" fill="#ff385c"/>
+  <!-- House silhouette in white — same shape the dashboard top-bar uses,
+       minus the smoke so the favicon stays static and reads cleanly even
+       at 16×16. Coordinates come from a 24-unit viewBox (the dashboard
+       SVG) scaled by 21.33 (= 512 / 24). The door + windows are punched
+       out using the coral background colour so the silhouette reads as a
+       proper house with openings even at favicon size. -->
+  <g transform="scale(21.333) translate(0,0)">
+    <g fill="white" stroke="white" stroke-width="0.4" stroke-linejoin="round">
+      <path d="M3.4 11.6 L12 4.5 L20.6 11.6 L19 11.6 L19 19.5 L5 19.5 L5 11.6 Z"/>
+      <rect x="15.6" y="6.2" width="1.7" height="3.4" rx="0.2"/>
+    </g>
+    <g fill="#ff385c">
+      <rect x="10.6" y="14" width="2.8" height="5.5" rx="0.4"/>
+      <rect x="6.7" y="13" width="2.4" height="2.4" rx="0.3"/>
+      <rect x="14.9" y="13" width="2.4" height="2.4" rx="0.3"/>
+    </g>
+  </g>
+</svg>

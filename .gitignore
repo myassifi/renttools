@@ -1,0 +1,137 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# This file is the first line of defence against accidentally committing secrets,
+# local notes, or development-tool config to a public repo. The second line is
+# .githooks/pre-commit (auto-installed via `npm install` postinstall). The third
+# is the forbidden-paths check in .github/workflows/ci.yml.
+# Add any new pattern to all three places when you find one that leaked.
+
+# === Dependencies & build artifacts ===
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+/coverage
+/.next/
+/out/
+/build
+/dist
+*.tsbuildinfo
+next-env.d.ts
+/src/generated/
+.swc/
+
+# === Logs ===
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# === OS / IDE config ===
+.DS_Store
+Thumbs.db
+*.pem
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# === Editor / agent config files dropped at the project root ===
+# Various editor and command-line tools may write local config or scratch
+# files into the repo. None of them belong in a public commit.
+CLAUDE.md
+claude.md
+Claude.md
+.claude/
+AGENTS.md
+agents.md
+.cursor/
+.cursorrules
+.cursor-tutor
+.aider*
+.continue/
+.copilot/
+
+# === Internal-only docs ===
+# Routine prompts, task backlogs, ops runbooks. Useful for the maintainer,
+# not for public users.
+.routines/
+ROUTINE.md
+TASKS.md
+OPS-ROUTINE.md
+MEMORY.md
+memory.md
+.memory/
+
+# === Local-only personal stuff ===
+# Everything inside .local/ stays local. Do NOT add a !exception here —
+# leaking even a README from this folder reveals the layout of secret files.
+.local/
+
+# === Test / browser-automation artifacts ===
+.playwright-mcp/
+.mcp/
+playwright-report/
+test-results/
+
+# === Env files (only .env.example may ever be committed) ===
+.env
+.env.*
+!.env.example
+
+# === Databases ===
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+/dev.db
+/data/
+
+# === Backups & dumps ===
+/backups/
+*.dump
+*.sql
+*.sql.gz
+*.tar.gz
+*.zip
+
+# === Sentry build artifacts ===
+.env.sentry-build-plugin
+.sentryclirc
+
+# === MCP server local config (contains API keys) ===
+.nano-banana-config.json
+
+# === SSH / signing keys (never, under any circumstance) ===
+id_rsa*
+id_ed25519*
+id_ecdsa*
+*.ppk
+*.pfx
+*.p12
+*.cer
+authorized_keys
+
+# === Vercel ===
+.vercel
+
+# === Runtime uploads (blog images, etc.) ===
+# Written by /api/admin/blog-images at runtime. Excluded from git so
+# `git reset --hard` on deploys does not wipe author uploads.
+/public/uploads/
+
+# Local design references (Airbnb page saves used as visual references)
+# Contains third-party API keys embedded in vendor JS — never commit.
+design/
+
+# Mobile audit screenshots — Playwright drops these at the repo
+# root during debug passes. Scoped to the root so /public/icon-192.png,
+# blog-covers/*.webp, etc. still ship.
+/mob-*.png
+/screenshot-*.png
+/page-*.png

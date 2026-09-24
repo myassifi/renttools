@@ -1,0 +1,33 @@
+# rent-tool — calendar sync cron
+#
+# Install:
+#   sudo crontab -u app -e
+#   …paste the lines below…
+#
+# The wrapper script (scripts/cron-sync.sh) sources CRON_SECRET from
+# /home/app/rent-tool/.env.production, so the secret is NEVER inlined
+# in the crontab. Keep .env.production at chmod 600.
+#
+# Verify after install:
+#   sudo crontab -u app -l
+#   tail -f /home/app/logs/rent-tool-cron.log
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+
+# Sync all calendars every 10 minutes (the app's own cron handler also
+# enforces a configurable per-account frequency, so over-firing is safe).
+*/10 * * * * /home/app/rent-tool/scripts/cron-sync.sh >> /home/app/logs/rent-tool-cron.log 2>&1
+
+# Daily SQLite backup at 03:15 with tiered retention (14 daily / 8 weekly / 6 monthly).
+15 3 * * * /home/app/rent-tool/scripts/backup-db.sh >> /home/app/logs/rent-tool-backup.log 2>&1
+
+# Hourly resource check — alerts on RAM > RAM_WARN_PCT% or disk > DISK_WARN_PCT%.
+# Reads TELEGRAM_BOT_TOKEN/CHAT_ID or ALERT_WEBHOOK_URL from .env.production.
+5 * * * * /home/app/rent-tool/scripts/check-resources.sh >> /home/app/logs/rent-tool-resources.log 2>&1
+
+# Monthly backup-restore drill — proves the latest snapshot is restorable.
+# Runs on the 1st at 04:30 (after the daily backup at 03:15 promotes into
+# the monthly tier). Same alert channel as check-resources.sh.
+30 4 1 * * /home/app/rent-tool/scripts/test-restore.sh >> /home/app/logs/rent-tool-restore-drill.log 2>&1

@@ -1,0 +1,711 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id                 Int                  @id @default(autoincrement())
+  username           String               @unique
+  password           String
+  // False for accounts created via Google sign-in (the stored password
+  // is an unusable random placeholder). Drives the profile's "Set a
+  // password" vs "Change password" UI; flips true once a real password
+  // is set. See src/lib/google-oauth.ts and the change-password route.
+  hasPassword        Boolean              @default(true)
+  role               String               @default("user") // "superadmin" | "user" | "cleaner"
+  email              String?              // optional; populated by Google sign-in (RT-16.5) or future profile edits
+  googleId           String?              @unique // Google subject (sub) ID — set when user signs in with Google
+  createdAt          DateTime             @default(now())
+  lastLoginAt        DateTime?
+  suspendedAt        DateTime?
+  alertsDismissedAt  DateTime?
+  // Account-wide display/reporting currency (ISO 4217). All money
+  // fields across properties, reservations and expenses are entered in
+  // this currency — no conversion is attempted.
+  currency           String               @default("EUR")
+  properties         Property[]
+  cleanerAssignments CleanerAssignment[]  @relation("CleanerAssignments")
+  cleanerProfiles    Cleaner[]            @relation("CleanerProfiles")
+  managedProperties  PropertyManager[]    @relation("ManagerAssignments")
+  grantedManagers    PropertyManager[]    @relation("ManagerGrants")
+  createdInvites     PropertyManagerInvite[] @relation("InviteCreators")
+  acceptedInvites    PropertyManagerInvite[] @relation("InviteAcceptors")
+  blogPosts          BlogPost[]
+  blogComments       BlogComment[]
+  feedback           Feedback[]
+  lockCredential     LockCredential?
+}
+
+// Short-lived 6-digit codes for email-verified signup and password
+// reset. For "signup" the row carries the pending account's hashed
+// password (passwordHash) so no half-built User row exists until the
+// address is confirmed; for "reset" it carries the target userId.
+// Codes are bcrypt-hashed (codeHash); rows are single-use (consumedAt)
+// and capped at a few wrong guesses (attempts) before being burned.
+model EmailCode {
+  id           Int       @id @default(autoincrement())
+  purpose      String    // "signup" | "reset"
+  email        String
+  codeHash     String
+  passwordHash String?
+  userId       Int?
+  attempts     Int       @default(0)
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([email, purpose])
+}
+
+// Site-wide visitor feedback. Submitted by anyone (signed-in or
+// anonymous) via the floating feedback button on public pages.
+// Super-admin reviews the queue at /dashboard/admin/content/feedback.
+//
+// Rate-limited at the API layer by ipHash (one submit per 30s) so the
+// shared instance can't be carpet-bombed by a single bad actor. ipHash
+// is SHA-256 of the inbound IP — same scheme used elsewhere for GDPR-
+// safe per-IP throttling without retaining raw addresses.
+model Feedback {
+  id           Int       @id @default(autoincrement())
+  body         String                                       // 5-2000 chars; sanitised in admin render
+  contactEmail String?                                      // optional; visitor opts in to a reply
+  pagePath     String    @default("")                       // where they were when they hit Send
+  userAgent    String    @default("")                       // truncated to 250 chars at write time
+  ipHash       String                                       // SHA-256 of inbound IP, hex
+  userId       Int?                                         // null when submitted by an anonymous visitor
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status       String    @default("new")                    // "new" | "read" | "archived"
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime?
+
+  @@index([status, createdAt])
+  @@index([ipHash, createdAt])
+  @@index([userId])
+}
+
+model AppSettings {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}
+
+// Global site-wide configuration. Distinct from AppSettings (which is bound
+// to the legacy Gemini key/model lookup) so the admin UI can manage these
+// keys without touching the existing extraction pipeline.
+model SiteSetting {
+  id        Int       @id @default(autoincrement())
+  key       String    @unique
+  value     String
+  updatedAt DateTime?
+}
+
+model Property {
+  id             Int              @id @default(autoincrement())
+  userId         Int
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  minNights      Int              @default(1)
+  checkInTime    String           @default("14:00")
+  checkOutTime   String           @default("12:00")
+  bookingWindow  Int              @default(365) // days forward from today to accept bookings; beyond this, events are ignored
+  cleaningEnabled Boolean         @default(true) // master toggle for buffer / sameDayCleaning / potentialCleaning / unbookable computation; conflict detection still runs
+  feedToken      String?          @unique // optional opt-in token gating the public iCal feed; null = public
+  feedSlug       String?          @unique // durable URL identifier for the iCal feed; minted at creation, never changes
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime?
+  reservations       Reservation[]
+  calendarLinks      CalendarLink[]
+  calendarEvents     CalendarEvent[]
+  dateOverrides      DateOverride[]
+  cleanerAssignments CleanerAssignment[]
+  cleaningRecords    CleaningRecord[]
+  messageTemplates   MessageTemplate[]
+  managers           PropertyManager[]
+  managerInvites     PropertyManagerInvite[]
+  guestFormTemplates GuestFormTemplate[]
+  expenses           Expense[]
+  accessCodes        AccessCode[]
+
+  // Tuya smart-lock device bound to this property. lockDeviceId is the
+  // Tuya device_id string; both nullable — properties without a lock
+  // simply don't show door-access features.
+  lockDeviceId       String?
+  lockDeviceName     String?
+
+  @@index([userId])
+}
+
+model PropertyManager {
+  id          Int      @id @default(autoincrement())
+  propertyId  Int
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  managerId   Int
+  manager     User     @relation("ManagerAssignments", fields: [managerId], references: [id], onDelete: Cascade)
+  grantedById Int
+  grantedBy   User     @relation("ManagerGrants", fields: [grantedById], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([managerId, propertyId])
+  @@index([propertyId])
+  @@index([managerId])
+}
+
+model PropertyManagerInvite {
+  id           Int       @id @default(autoincrement())
+  propertyId   Int
+  property     Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  token        String    @unique
+  createdById  Int
+  createdBy    User      @relation("InviteCreators", fields: [createdById], references: [id], onDelete: Cascade)
+  acceptedById Int?      // null until accepted; references the user who accepted
+  acceptedBy   User?     @relation("InviteAcceptors", fields: [acceptedById], references: [id], onDelete: SetNull)
+  acceptedAt   DateTime?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([propertyId])
+  @@index([token])
+}
+
+model MessageTemplate {
+  id             Int      @id @default(autoincrement())
+  propertyId     Int
+  property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name           String
+  language       String   @default("en")
+  subject        String   @default("")
+  body           String
+  sendOffsetDays Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime?
+
+  @@index([propertyId])
+}
+
+model CleaningRecord {
+  id            Int      @id @default(autoincrement())
+  propertyId    Int
+  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  date          String   // YYYY-MM-DD
+  status        String   @default("pending") // "pending" | "done" | "skipped"
+  doneAt        DateTime?
+  doneByUserId  Int?
+  notes         String   @default("")
+  photos        String   @default("[]") // JSON array of URLs
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime?
+
+  @@unique([propertyId, date])
+  @@index([propertyId, date])
+}
+
+// Cleaner profile (RT-25.10). Account-level entity owned by a host;
+// represents a real-world cleaner the host can assign to one or more
+// properties via CleanerAssignment.cleanerProfileId. Cleaners do NOT
+// need login access — they're metadata. Existing already-provisioned
+// cleaner Users keep working through the legacy CleanerAssignment.cleanerId
+// path during the transitional cycle.
+model Cleaner {
+  id           Int                 @id @default(autoincrement())
+  ownerUserId  Int
+  owner        User                @relation("CleanerProfiles", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  name         String
+  phone        String?
+  createdAt    DateTime            @default(now())
+  assignments  CleanerAssignment[] @relation("CleanerProfileAssignments")
+
+  @@index([ownerUserId])
+}
+
+model CleanerAssignment {
+  // After RT-25.10 tick 1, exactly one of cleanerId / cleanerProfileId
+  // is set per row. Legacy login-capable cleaner Users use cleanerId;
+  // new profile-only cleaners use cleanerProfileId. The backfill in
+  // push-schema.ts populates BOTH on existing rows so already-assigned
+  // cleaners keep working while gaining a profile in the new pool.
+  id               Int      @id @default(autoincrement())
+  cleanerId        Int?
+  cleaner          User?    @relation("CleanerAssignments", fields: [cleanerId], references: [id], onDelete: Cascade)
+  cleanerProfileId Int?
+  cleanerProfile   Cleaner? @relation("CleanerProfileAssignments", fields: [cleanerProfileId], references: [id], onDelete: Cascade)
+  propertyId       Int
+  property         Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  // Lower number = higher rank. 0 = default cleaner for the property,
+  // 1 = first backup, 2 = second backup, etc.
+  priority         Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  @@unique([cleanerId, propertyId])
+  @@unique([cleanerProfileId, propertyId])
+  @@index([cleanerId])
+  @@index([cleanerProfileId])
+  @@index([propertyId])
+}
+
+model CalendarLink {
+  id            Int       @id @default(autoincrement())
+  propertyId    Int
+  property      Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  platform      String    // "airbnb" or "booking"
+  icalExportUrl String    // iCal export URL from the platform
+  bufferBefore  Int       @default(1) // days before booking to block
+  bufferAfter   Int       @default(1) // days after booking to block
+  lastFetchedAt DateTime?
+  lastError     String?
+  failureCount  Int       @default(0)
+  createdAt     DateTime  @default(now())
+}
+
+model CalendarEvent {
+  id         Int      @id @default(autoincrement())
+  propertyId Int
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  platform   String   // source platform
+  uid        String   // iCal event UID
+  summary    String   @default("")
+  startDate  String   // YYYY-MM-DD
+  endDate    String   // YYYY-MM-DD
+  createdAt  DateTime @default(now())
+
+  @@unique([propertyId, platform, uid])
+}
+
+model SyncLog {
+  id         Int      @id @default(autoincrement())
+  propertyId Int?
+  level      String   @default("info") // "info", "warn", "error", "success"
+  message    String
+  createdAt  DateTime @default(now())
+}
+
+model Reservation {
+  id              Int      @id @default(autoincrement())
+  name            String
+  checkIn         DateTime
+  checkOut        DateTime
+  // Actual booking/payment channel. A host-entered extension of an
+  // Airbnb/Booking stay is "direct"; the source platform is kept
+  // separately in linkedEventPlatform so feeds and UI do not mistake the
+  // added nights for inventory owned by the source channel.
+  platform            String  @default("airbnb")
+  linkedEventUid      String? // UID is unique only inside one platform feed
+  linkedEventPlatform String? // exact source platform paired with linkedEventUid
+  linkedEventRole     String? // "claim" (overlaps source) | "extension" (abuts source)
+  // Per-reservation messenger group chat. The host creates a one-off
+  // group for THIS booking (different from User.tgGroupInviteUrl, which
+  // is a host-wide invite link sent to every guest) and saves the URL
+  // here so they can jump back into it in one click from the reservation
+  // view. Validated to start with the platform's public URL prefix at
+  // both the UI and the PATCH endpoint.
+  tgGroupUrl      String?  // must start with https://t.me/ when set
+  waGroupUrl      String?  // must start with https://chat.whatsapp.com/ when set
+  // Host-editable override for the group-chat name. When null the
+  // reservation view shows an auto-generated name ("Airbnb 12-19 May
+  // 2026 | Amilla | House 7"); when set, the host's custom text is
+  // used by the "Copy group name" button instead.
+  groupName       String?
+  // Per-reservation contact phone. Optional; lets the host save a phone
+  // number for a booking that has no passport guests (or for a 1-of-1
+  // booking) and use it to deeplink straight into a personal WhatsApp /
+  // Telegram chat. Stored in the same loose E.164 shape Guest.phone uses.
+  phone           String?
+  // Confirmed party size. iCal imports usually cannot provide it, so legacy
+  // rows may remain null until the owner confirms the booking details.
+  bookedGuestCount Int?
+  // Money in minor units (cents) of User.currency. All nullable so
+  // iCal-imported rows and legacy rows stay money-free until the host
+  // enters a price or a payout import matches the booking.
+  grossCents       Int? // what the guest paid
+  hostFeeCents     Int? // platform commission withheld from gross
+  cleaningFeeCents Int? // cleaning portion the guest paid (part of gross)
+  payoutCents      Int? // net amount the host received
+  expenses         Expense[]
+  accessCode       AccessCode?
+  propertyId      Int
+  property        Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  guests          Guest[]
+  guestFormSubmissions GuestFormSubmission[]
+  eVisitorReceipts EVisitorReceipt[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([propertyId, linkedEventPlatform, linkedEventUid])
+}
+
+model DateOverride {
+  id         Int      @id @default(autoincrement())
+  propertyId Int
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  date       String   // YYYY-MM-DD
+  type       String   // "open" or "closed"
+  note       String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@unique([propertyId, date])
+}
+
+// Host-recorded cost against a property. Money is stored as minor
+// units (cents) of User.currency — single account currency, no
+// conversion. `date` is a YYYY-MM-DD calendar day (same convention as
+// DateOverride) so reports bucket by local month without timezone drift.
+//
+// Recurring costs (rent, internet, insurance) are materialized as
+// individual rows sharing a recurGroup id when the expense is created
+// with a monthly repeat. Each generated row is a normal expense — it
+// can be edited or deleted alone, or the whole series via recurGroup.
+model Expense {
+  id            Int          @id @default(autoincrement())
+  propertyId    Int
+  property      Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  date          String       // YYYY-MM-DD
+  category      String       // "cleaning" | "supplies" | "utilities" | "maintenance" | "platform-fees" | "taxes" | "rent" | "insurance" | "other"
+  amountCents   Int
+  note          String       @default("")
+  // Optional link to the booking that caused the cost (e.g. a paid
+  // extra cleaning). Nullable — most costs are property-level.
+  reservationId Int?
+  reservation   Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+  // Shared group id for rows generated by a monthly repeat; null on
+  // one-off expenses. Lets the API delete or list a whole series.
+  recurGroup    String?
+  createdById   Int
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime?    // nullable; push-schema grants no @updatedAt trigger
+
+  @@index([propertyId, date])
+  @@index([recurGroup])
+}
+
+// Smart-lock provider account (Tuya today; the shape leaves room for
+// Seam/Nuki later — provider is a string, not an enum). clientSecret
+// is AES-256-GCM encrypted with the guest-data key before it touches
+// the DB; uid is the Tuya app account UID after Smart Life linking.
+model LockCredential {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique // one provider account per user for now
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        String   @default("tuya")
+  region          String   @default("eu") // eu | us | cn | in | we (western america)
+  clientId        String
+  clientSecretEnc String
+  uid             String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime?
+}
+
+// A door PIN generated for one reservation. codeEnc holds the PIN
+// encrypted with the guest-data key (same storage as guest docs) so a
+// DB dump doesn't leak live door codes; the API decrypts only when a
+// manager/host actually asks for it. remotePasswordId is the provider's
+// id used for revoke/modify calls.
+model AccessCode {
+  id               Int         @id @default(autoincrement())
+  reservationId    Int         @unique // one code per booking
+  reservation      Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  propertyId       Int
+  property         Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  provider         String      @default("tuya")
+  remotePasswordId String?
+  codeEnc          String
+  name             String
+  validFrom        DateTime
+  validUntil       DateTime
+  status           String      @default("active") // active | revoked | failed
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime?
+
+  @@index([propertyId])
+}
+
+model AuditLog {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  action       String   // "create" | "update" | "delete"
+  resourceType String   // "property" | "reservation" | "guest" | "override" | "calendarLink"
+  resourceId   Int
+  payload      String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Guest {
+  id               Int         @id @default(autoincrement())
+  fullName         String
+  firstName        String      @default("")
+  lastName         String      @default("")
+  country          String
+  citizenshipCode  String      @default("")
+  dateOfBirth      String
+  yearsOld         Int
+  gender           String      @default("")
+  dateOfIssue      String
+  expiryDate       String
+  passportNumber   String
+  issuedBy         String
+  visaNumber       String      @default("")
+  visaFrom         String      @default("")
+  visaTo           String      @default("")
+  hasVisa          Boolean     @default(false)
+  parentId         Int?
+  notes            String      @default("")
+  phone            String      @default("")
+  reservationId    Int
+  reservation      Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+// Anonymous pre-signup wizard state. Created when a visitor starts
+// /onboard, claimed by the signup endpoint when they create an account
+// (the draft's links + propertyName are materialised as a real Property
+// + CalendarLinks). Drafts older than 14 days with no claim are
+// candidates for cleanup, but pruning is opportunistic, not enforced.
+model OnboardingDraft {
+  id              Int       @id @default(autoincrement())
+  sessionToken    String    @unique
+  propertyName    String    @default("")
+  // Durable URL slug for the property-to-be. Minted when the draft is
+  // first persisted so feed URLs handed to the user during onboarding
+  // (https://renttools.io/api/calendar/feed/<slug>/for-airbnb.ics)
+  // remain valid after signup — the materialised Property inherits this
+  // slug verbatim. Without it, post-signup feed URLs would change and
+  // silently break anywhere the user already pasted them.
+  feedSlug        String?   @unique
+  // JSON: { platform: string, customName?: string, color?: string,
+  //         icalExportUrl: string, lastTestStatus?: "valid"|"invalid" }[]
+  links           String    @default("[]")
+  claimedByUserId Int?
+  claimedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime?
+}
+
+// Blog post — one row per article per locale. Slug uniqueness is per
+// (slug, locale) so the EN and RU translations of the same post can
+// share a slug. tagsJson is a denormalised cache of BlogTag slugs for
+// fast list rendering; the canonical tag table is BlogTag (super-admin
+// can rename / merge tags there without touching every post).
+model BlogPost {
+  id                 Int          @id @default(autoincrement())
+  slug               String
+  locale             String       @default("en") // "en" | "ru"
+  title              String
+  excerpt            String       @default("")  // 140-160 char meta-description summary
+  body               String       @default("")  // markdown
+  // Structured TL;DR — rendered as a callout above the body and excluded
+  // from the main markdown so we don't double-render. Plain markdown
+  // bullet syntax accepted (e.g. "- foo\n- bar").
+  tldr               String       @default("")
+  // Structured FAQ list — JSON: [{ "q": "...", "a": "..." }, ...]. Drives
+  // the on-page Q/A section AND the FAQPage JSON-LD that Google reads
+  // for rich-result eligibility. Empty array = no FAQ section rendered.
+  faqJson            String       @default("[]")
+  status             String       @default("draft") // "draft" | "published" | "archived"
+  authorId           Int
+  author             User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  tagsJson           String       @default("[]") // JSON array of BlogTag slugs
+  ogImageUrl         String?
+  // Cover image dimensions — populated by the upload API so the post
+  // page can emit `width` / `height` in the JSON-LD ImageObject and
+  // <img> tags can reserve layout space (kills CLS on the cover swap).
+  ogImageWidth       Int?
+  ogImageHeight      Int?
+  // Cross-locale link (RT-20.3 tick 2). Posts that translate the same
+  // article share a translationGroupId; the post page renders "Read in
+  // Russian" / "Read in English" by joining on this id. Self-managed by
+  // the translation-link endpoint — null when the post has no sibling.
+  translationGroupId Int?
+  publishedAt        DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime?
+  comments           BlogComment[]
+
+  @@unique([slug, locale])
+  @@index([locale, status, publishedAt])
+  @@index([authorId])
+  @@index([translationGroupId])
+}
+
+// Canonical tag table. Editing displayName here flows to the rendered
+// tag label everywhere; renaming the slug is supported but expensive
+// (super-admin tooling will handle the rewrite of every BlogPost.tagsJson).
+model BlogTag {
+  id          Int      @id @default(autoincrement())
+  slug        String
+  displayName String
+  locale      String   @default("en") // tags are per-locale (so "хосты" exists separately from "hosts")
+  createdAt   DateTime @default(now())
+
+  @@unique([slug, locale])
+}
+
+// Comment on a published blog post by a registered user. Status
+// transitions: visible (default) → hidden (super-admin moderation) →
+// deleted (soft delete, kept for audit). Hard-delete is not exposed.
+model BlogComment {
+  id        Int       @id @default(autoincrement())
+  postId    Int
+  post      BlogPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String
+  status    String    @default("visible") // "visible" | "hidden" | "deleted"
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+
+  @@index([postId, createdAt])
+  @@index([userId])
+  @@index([status, createdAt])
+}
+
+// One row per /api/extract POST. Powers the daily per-user rate limit
+// (RT-15.5) and gives admins an audit trail of who pushed what through
+// the Gemini pipeline. No FK to User on purpose so deleting a user
+// doesn't lose audit history.
+model ExtractionLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  fileCount Int      @default(0)
+  success   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// Calendar platform preset registry (RT-17.1). Single source of truth
+// for the platforms a CalendarLink can target — Airbnb, Booking, Vrbo,
+// etc. — plus the special "direct" pseudo-platform for manually-entered
+// reservations. Seeded with 12 well-known presets by push-schema.ts;
+// super-admins (RT-17.1 tick 2) can edit displayName / color / icon
+// and add custom presets via the admin panel. isCustom marks
+// user-added rows so the UI offers Delete only on those, never on the
+// seeded baseline.
+// Per-page SEO overrides (RT-18.3). Super-admin sets per-(path, locale)
+// title / description / OG image / canonical to override the defaults
+// emitted by `src/app/layout.tsx` and any per-route generateMetadata().
+// Path is the URL pathname (no querystring, no trailing slash except "/").
+// Reads are merged with site-wide defaults stored in SiteSetting
+// (seo_default_title, seo_default_description, seo_default_og_image).
+// Per-locale uniqueness mirrors BlogPost so an EN and RU translation of
+// the same /about page can hold separate metadata.
+model SeoOverride {
+  id          Int       @id @default(autoincrement())
+  path        String
+  locale      String    @default("en") // "en" | "ru"
+  title       String?
+  description String?
+  ogImage     String?
+  canonical   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime?
+
+  @@unique([path, locale])
+  @@index([path])
+}
+
+// Pre-arrival guest form (RT-25.2). One reusable Template per Property
+// captures the questions the host wants to ask future guests (planned
+// check-in time, transfer needs, etc.). Per Reservation, a Submission
+// is created with a unique shareToken so the guest can fill it without
+// logging in. The submission's `answers` JSON captures the field
+// labels at submit time, so editing the template later does not break
+// previously-collected answers.
+model GuestFormTemplate {
+  id          Int                   @id @default(autoincrement())
+  propertyId  Int
+  property    Property              @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name        String                @default("")
+  // JSON: ordered list of { id: string, type: string, label: string,
+  //   required: boolean, options?: string[] }. Field types:
+  //   short-text | long-text | number | select | multi-select |
+  //   date | time | yes-no | phone
+  fields      String                @default("[]")
+  // JSON object of host-authored translations, keyed by locale code
+  // (ru|de|fr|es). Shape: { "<locale>": { name?: string, fields?:
+  //   { "<fieldId>": { label?, helpText?, options?: string[] } } } }.
+  // Empty {} = English-only (the default); English itself lives in
+  //   `name` / `fields`. See src/lib/guest-form-i18n.ts.
+  i18n        String                @default("{}")
+  submissions GuestFormSubmission[]
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime?
+
+  @@index([propertyId])
+}
+
+model GuestFormSubmission {
+  id            Int               @id @default(autoincrement())
+  reservationId Int
+  reservation   Reservation       @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  templateId    Int
+  template      GuestFormTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  shareToken    String            @unique
+  // New links are looked up by SHA-256 hash. `shareToken` remains for
+  // backwards compatibility with already-issued links; for new rows it holds
+  // only a non-secret legacy marker. The raw token is encrypted so an
+  // authenticated owner can copy the same link again without storing it in
+  // plaintext.
+  tokenHash      String?           @unique
+  tokenCiphertext String?
+  status         String            @default("NOT_INVITED")
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  securePayload  String            @default("")
+  ownerApprovedAt DateTime?
+  lastChangedAt  DateTime?
+  // JSON: ordered list of { fieldId, type, label, value }. Captured at
+  // submit time so template edits don't retroactively change history.
+  answers       String            @default("[]")
+  submittedAt   DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime?
+
+  @@index([reservationId])
+  @@index([templateId])
+  @@index([status])
+}
+
+model EVisitorReceipt {
+  id                  Int         @id @default(autoincrement())
+  reservationId       Int
+  reservation         Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  // Stable server-issued ID stored inside the encrypted pre-check-in payload.
+  // It is intentionally not the browser's clientId and contains no PII.
+  guestId             String
+  eVisitorGuid        String
+  action              String
+  environment         String      @default("test")
+  status              String
+  requestHash         String
+  attemptedAt         DateTime    @default(now())
+  readbackConfirmedAt DateTime?
+  attemptCount        Int         @default(1)
+  failureCode         String?
+
+  @@unique([reservationId, guestId, action, requestHash])
+  @@index([eVisitorGuid])
+  @@index([reservationId, guestId])
+}
+
+model CalendarPlatform {
+  id                    Int       @id @default(autoincrement())
+  slug                  String    @unique
+  displayName           String
+  color                 String    @default("#6B7280") // hex (#rrggbb), used by calendar grid
+  iconUrl               String?
+  defaultBufferBefore   Int       @default(1) // days, copied into new CalendarLink.bufferBefore
+  defaultBufferAfter    Int       @default(1)
+  importInstructionsKey String?   // i18n key for the "where to find your iCal" copy
+  exportInstructionsKey String?   // i18n key for the "paste this back into the platform" copy
+  isCustom              Boolean   @default(false)
+  enabled               Boolean   @default(true) // soft-disable hides the preset from add-link dropdowns
+  sortOrder             Int       @default(100) // smaller appears first; ties broken by displayName
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime?
+}
