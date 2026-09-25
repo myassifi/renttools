@@ -639,7 +639,7 @@ export function FinancePanel({ property, targetProperties, buckets }: FinancePan
                   return [fmt(Math.round(Number(value) * 100)), label];
                 }}
               />
-              <Bar dataKey="income" fill="var(--m-accent)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="income" fill="#10b981" radius={[4, 4, 0, 0]} />
               <Bar dataKey="expense" fill="#f43f5e" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
