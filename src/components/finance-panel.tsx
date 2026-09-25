@@ -680,7 +680,7 @@ export function FinancePanel({ property, targetProperties, buckets }: FinancePan
                 }}
                 formatter={(value, name) => {
                   const label =
-                    name === "income" ? c.income : name === "expense" ? c.expenseSingular : c.netLabel;
+                    name === "income" ? c.payout : name === "expense" ? c.expenseSingular : c.netLabel;
                   return [fmt(Math.round(Number(value) * 100)), label];
                 }}
               />
@@ -691,7 +691,7 @@ export function FinancePanel({ property, targetProperties, buckets }: FinancePan
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
           <span className="inline-flex items-center rounded-full bg-emerald-500 px-2.5 py-0.5 text-[11px] font-semibold text-white">
-            {c.income}
+            {c.payout}
           </span>
           <span className="inline-flex items-center rounded-full bg-rose-500 px-2.5 py-0.5 text-[11px] font-semibold text-white">
             {c.expenseSingular}
@@ -709,7 +709,7 @@ export function FinancePanel({ property, targetProperties, buckets }: FinancePan
             <thead>
               <tr className="border-b border-[var(--line)] text-left text-[10px] uppercase tracking-wider text-[var(--ink-4)]">
                 <th className="py-1.5 pr-3 font-medium">{c.colMonth}</th>
-                <th className="py-1.5 pr-3 font-medium text-right">{c.income}</th>
+                <th className="py-1.5 pr-3 font-medium text-right">{c.payout}</th>
                 <th className="py-1.5 pr-3 font-medium text-right">{c.expenseSingular}</th>
                 <th className="py-1.5 font-medium text-right">{c.netLabel}</th>
               </tr>
