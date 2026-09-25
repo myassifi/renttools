@@ -1294,7 +1294,7 @@ export function ReportsPanel({ property, properties }: ReportsPanelProps) {
               />
 
               <CsvImport
-                properties={targetProperties}
+                properties={properties}
                 onDone={() => router.refresh()}
               />
             </>
