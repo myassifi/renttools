@@ -82,9 +82,7 @@ export async function POST(request: NextRequest) {
     let created = 0;
     let updated = 0;
     let skippedNoMapping = 0;
-    let coHostExpenses = 0;
     const errors: string[] = [];
-    const codeToReservationId = new Map<string, number>();
 
     for (const row of parsed.reservations) {
       const propertyId = listingToProperty.get(row.listing);
@@ -112,7 +110,6 @@ export async function POST(request: NextRequest) {
       });
       if (existingImport) {
         await prisma.reservation.update({ where: { id: existingImport.id }, data: money });
-        codeToReservationId.set(row.confirmationCode, existingImport.id);
         updated++;
         continue;
       }
@@ -135,13 +132,12 @@ export async function POST(request: NextRequest) {
         // Only touch money/name — keep linkedEventUid intact, it's the
         // feed's dedupe key and overwriting it would break iCal sync.
         await prisma.reservation.update({ where: { id: sameDayStay.id }, data: money });
-        codeToReservationId.set(row.confirmationCode, sameDayStay.id);
         updated++;
         continue;
       }
 
       // 3) No booking on record (old stays age out of iCal feeds) → create
-      const newRes = await prisma.reservation.create({
+      await prisma.reservation.create({
         data: {
           propertyId,
           platform: "airbnb",
@@ -153,40 +149,13 @@ export async function POST(request: NextRequest) {
           ...money,
         },
       });
-      codeToReservationId.set(row.confirmationCode, newRes.id);
       created++;
     }
 
-    // Co-Host payout rows (negative share going to the co-host/cleaner)
-    // become cleaning expenses on the reservation they belong to.
-    const COHOST_NOTE_PREFIX = "Co-host payout · Airbnb ";
-    for (const row of parsed.coHostPayouts) {
-      const reservationId = codeToReservationId.get(row.confirmationCode);
-      if (!reservationId) continue;
-      const reservation = await prisma.reservation.findUnique({
-        where: { id: reservationId },
-        select: { propertyId: true },
-      });
-      if (!reservation) continue;
-      const note = `${COHOST_NOTE_PREFIX}${row.confirmationCode}`;
-      const dupe = await prisma.expense.findFirst({
-        where: { reservationId, note },
-        select: { id: true },
-      });
-      if (dupe) continue;
-      await prisma.expense.create({
-        data: {
-          propertyId: reservation.propertyId,
-          reservationId,
-          date: row.date,
-          category: "cleaning" as const,
-          amountCents: row.amountCents,
-          note,
-          createdById: session.userId,
-        },
-      });
-      coHostExpenses++;
-    }
+    // Co-Host payout rows are parsed but NOT booked as expenses — the
+    // cleaning fee already lives on the reservation's money fields and the
+    // co-host share is an internal arrangement, not a P&L expense.
+    const coHostExpenses = 0;
 
     // Remember the listing→property mapping for next time.
     for (const [listing, propertyId] of listingToProperty) {
