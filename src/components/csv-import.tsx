@@ -15,7 +15,7 @@ interface CopyShape {
   skip: string;
   importCta: (n: number) => string;
   importing: string;
-  result: (created: number, updated: number, skipped: number) => string;
+  result: (created: number, updated: number, skipped: number, coHost: number) => string;
   rowsFound: (n: number, currencies: string) => string;
   error: string;
   reset: string;
@@ -32,7 +32,7 @@ const COPY: Record<Locale, CopyShape> = {
     skip: "Skip",
     importCta: (n) => `Import ${n} reservation${n === 1 ? "" : "s"}`,
     importing: "Importing…",
-    result: (c, u, s) => `Done: ${c} added, ${u} updated${s ? `, ${s} skipped (unmapped listings)` : ""}.`,
+    result: (c, u, s, ch) => `Done: ${c} added, ${u} updated${s ? `, ${s} skipped` : ""}${ch ? `, ${ch} co-host cleaning expenses` : ""}.`,
     rowsFound: (n, cur) => `${n} reservation rows · currency: ${cur}`,
     error: "Import failed — is this the Airbnb transaction-history CSV?",
     reset: "Import another file",
@@ -47,7 +47,7 @@ const COPY: Record<Locale, CopyShape> = {
     skip: "Ignorer",
     importCta: (n) => `Importer ${n} réservation${n === 1 ? "" : "s"}`,
     importing: "Import en cours…",
-    result: (c, u, s) => `Terminé : ${c} ajoutées, ${u} mises à jour${s ? `, ${s} ignorées (annonces non associées)` : ""}.`,
+    result: (c, u, s, ch) => `Terminé : ${c} ajoutées, ${u} mises à jour${s ? `, ${s} ignorées` : ""}${ch ? `, ${ch} dépenses ménage co-host` : ""}.`,
     rowsFound: (n, cur) => `${n} lignes de réservation · devise : ${cur}`,
     error: "Import impossible — est-ce bien le CSV « historique des transactions » Airbnb ?",
     reset: "Importer un autre fichier",
@@ -62,7 +62,7 @@ const COPY: Record<Locale, CopyShape> = {
     skip: "Überspringen",
     importCta: (n) => `${n} Buchung${n === 1 ? "" : "en"} importieren`,
     importing: "Importiert…",
-    result: (c, u, s) => `Fertig: ${c} hinzugefügt, ${u} aktualisiert${s ? `, ${s} übersprungen (nicht zugeordnet)` : ""}.`,
+    result: (c, u, s, ch) => `Fertig: ${c} hinzugefügt, ${u} aktualisiert${s ? `, ${s} übersprungen` : ""}${ch ? `, ${ch} Co-Host-Reinigungskosten` : ""}.`,
     rowsFound: (n, cur) => `${n} Buchungszeilen · Währung: ${cur}`,
     error: "Import fehlgeschlagen — ist das der Airbnb-Transaktionsverlauf?",
     reset: "Weitere Datei importieren",
@@ -77,7 +77,7 @@ const COPY: Record<Locale, CopyShape> = {
     skip: "Omitir",
     importCta: (n) => `Importar ${n} reserva${n === 1 ? "" : "s"}`,
     importing: "Importando…",
-    result: (c, u, s) => `Listo: ${c} añadidas, ${u} actualizadas${s ? `, ${s} omitidas (anuncios sin asociar)` : ""}.`,
+    result: (c, u, s, ch) => `Listo: ${c} añadidas, ${u} actualizadas${s ? `, ${s} omitidas` : ""}${ch ? `, ${ch} gastos de limpieza co-host` : ""}.`,
     rowsFound: (n, cur) => `${n} filas de reserva · moneda: ${cur}`,
     error: "Importación fallida — ¿es el CSV de historial de transacciones de Airbnb?",
     reset: "Importar otro archivo",
@@ -92,7 +92,7 @@ const COPY: Record<Locale, CopyShape> = {
     skip: "Пропустить",
     importCta: (n) => `Импортировать броней: ${n}`,
     importing: "Импорт…",
-    result: (c, u, s) => `Готово: добавлено ${c}, обновлено ${u}${s ? `, пропущено ${s} (объявления без объекта)` : ""}.`,
+    result: (c, u, s, ch) => `Готово: добавлено ${c}, обновлено ${u}${s ? `, пропущено ${s}` : ""}${ch ? `, расходов на уборку ко-хоста: ${ch}` : ""}.`,
     rowsFound: (n, cur) => `${n} строк броней · валюта: ${cur}`,
     error: "Не удалось импортировать — это CSV истории транзакций Airbnb?",
     reset: "Импортировать другой файл",
@@ -163,7 +163,7 @@ export function CsvImport({ properties, onDone }: { properties: Property[]; onDo
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "import failed");
-      setDoneMsg(c.result(data.created ?? 0, data.updated ?? 0, data.skippedNoMapping ?? 0));
+      setDoneMsg(c.result(data.created ?? 0, data.updated ?? 0, data.skippedNoMapping ?? 0, data.coHostExpenses ?? 0));
       setPreview(null);
       setCsvText("");
       onDone?.();

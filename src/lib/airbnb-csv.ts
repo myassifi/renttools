@@ -18,8 +18,17 @@ export interface AirbnbReservationRow {
   payoutCents: number; // net to host (the "Amount" column)
 }
 
+export interface AirbnbCoHostRow {
+  confirmationCode: string;
+  listing: string;
+  date: string; // YYYY-MM-DD (posting date)
+  amountCents: number; // absolute value — the CSV stores it negative
+  currency: string;
+}
+
 export interface AirbnbCsvParseResult {
   reservations: AirbnbReservationRow[];
+  coHostPayouts: AirbnbCoHostRow[];
   listingCounts: Record<string, number>;
   currencies: string[];
   skippedPayoutRows: number;
@@ -90,7 +99,7 @@ export function parseAirbnbCsv(text: string): AirbnbCsvParseResult {
   const records = toRecords(text.replace(/^﻿/, ""));
   const headerIdx = records.findIndex((r) => r.includes(HEADER_HINT));
   const empty: AirbnbCsvParseResult = {
-    reservations: [], listingCounts: {}, currencies: [],
+    reservations: [], coHostPayouts: [], listingCounts: {}, currencies: [],
     skippedPayoutRows: 0, skippedCoHostRows: 0, skippedOtherRows: 0,
   };
   if (headerIdx < 0) return empty;
@@ -120,7 +129,23 @@ export function parseAirbnbCsv(text: string): AirbnbCsvParseResult {
     const type = (r[c.type] || "").trim();
     if (!type) continue;
     if (type === "Payout") { result.skippedPayoutRows++; continue; }
-    if (type === "Co-Host payout" || type === "Co-host payout") { result.skippedCoHostRows++; continue; }
+    if (type === "Co-Host payout" || type === "Co-host payout") {
+      result.skippedCoHostRows++;
+      const code = (r[c.code] || "").trim();
+      const date = usDateToIso(r[0] || "");
+      const amount = moneyToCents(r[c.amount] || "");
+      const currency = (r[c.currency] || "").trim();
+      if (code && date && amount !== null) {
+        result.coHostPayouts.push({
+          confirmationCode: code,
+          listing: (r[c.listing] || "").trim(),
+          date,
+          amountCents: Math.abs(amount),
+          currency,
+        });
+      }
+      continue;
+    }
     if (type !== "Reservation" && type !== "Reservation Adjustment") { result.skippedOtherRows++; continue; }
 
     const checkIn = usDateToIso(r[c.start] || "");

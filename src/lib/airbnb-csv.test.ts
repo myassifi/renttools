@@ -38,6 +38,11 @@ describe("parseAirbnbCsv", () => {
     expect(r.reservations).toHaveLength(1);
     expect(r.skippedPayoutRows).toBe(1);
     expect(r.skippedCoHostRows).toBe(1);
+    // co-host payouts are captured for cleaning-expense import
+    expect(r.coHostPayouts).toHaveLength(1);
+    expect(r.coHostPayouts[0].confirmationCode).toBe("HMAXN8TAHS");
+    expect(r.coHostPayouts[0].amountCents).toBe(22500); // abs value
+    expect(r.coHostPayouts[0].date).toBe("2026-09-25");
   });
 
   it("handles quoted commas, negative amounts and multi-currency", () => {
