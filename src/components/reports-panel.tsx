@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   BarChart,
   Bar,
@@ -15,6 +16,7 @@ import {
 } from "recharts";
 import { PropertySwitcher } from "@/components/property-switcher";
 import { FinancePanel } from "@/components/finance-panel";
+import { CsvImport } from "@/components/csv-import";
 import { useI18n } from "@/lib/i18n/context";
 import type { Locale } from "@/lib/i18n/translations";
 import type { Property } from "@/lib/types";
@@ -833,6 +835,7 @@ function KpiCard({ label, value, subtitle, accent }: KpiCardProps) {
 export function ReportsPanel({ property, properties }: ReportsPanelProps) {
   const { locale } = useI18n();
   const c = COPY[locale];
+  const router = useRouter();
   const [exportFrom, setExportFrom] = useState("");
   const [exportTo, setExportTo] = useState("");
   const [events, setEvents] = useState<CalendarEventRow[]>([]);
@@ -1288,6 +1291,11 @@ export function ReportsPanel({ property, properties }: ReportsPanelProps) {
                 property={property}
                 targetProperties={targetProperties}
                 buckets={buckets}
+              />
+
+              <CsvImport
+                properties={targetProperties}
+                onDone={() => router.refresh()}
               />
             </>
           )}
