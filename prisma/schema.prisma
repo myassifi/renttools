@@ -328,6 +328,10 @@ model Reservation {
   hostFeeCents     Int? // platform commission withheld from gross
   cleaningFeeCents Int? // cleaning portion the guest paid (part of gross)
   payoutCents      Int? // net amount the host received
+  // YYYY-MM-DD the platform posted the payout (from the transaction-history
+  // CSV "Date" column). Reports bucket income by this when present — cash
+  // view — and fall back to check-in month otherwise.
+  payoutDate       String?
   expenses         Expense[]
   accessCode       AccessCode?
   propertyId      Int

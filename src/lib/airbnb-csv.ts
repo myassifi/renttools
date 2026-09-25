@@ -16,6 +16,7 @@ export interface AirbnbReservationRow {
   hostFeeCents: number;
   cleaningFeeCents: number;
   payoutCents: number; // net to host (the "Amount" column)
+  payoutDate: string | null; // YYYY-MM-DD — row "Date" = when the payout posted
 }
 
 export interface AirbnbCoHostRow {
@@ -171,6 +172,7 @@ export function parseAirbnbCsv(text: string): AirbnbCsvParseResult {
       hostFeeCents: moneyToCents(r[c.serviceFee] || "") ?? 0,
       cleaningFeeCents: moneyToCents(r[c.cleaningFee] || "") ?? 0,
       payoutCents: moneyToCents(r[c.amount] || "") ?? 0,
+      payoutDate: usDateToIso(r[0] || ""),
     });
   }
 

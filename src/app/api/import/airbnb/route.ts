@@ -102,6 +102,7 @@ export async function POST(request: NextRequest) {
         hostFeeCents: row.hostFeeCents,
         cleaningFeeCents: row.cleaningFeeCents,
         payoutCents: row.payoutCents,
+        payoutDate: row.payoutDate,
         name: row.guestName || "Airbnb guest",
       };
 

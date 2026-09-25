@@ -59,6 +59,8 @@ export interface Reservation {
   hostFeeCents?: number | null;
   cleaningFeeCents?: number | null;
   payoutCents?: number | null;
+  /** YYYY-MM-DD the platform posted the payout (from CSV import). */
+  payoutDate?: string | null;
   propertyId: number;
   createdAt: string;
   guests?: Guest[];

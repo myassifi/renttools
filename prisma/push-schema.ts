@@ -312,6 +312,7 @@ CREATE TABLE IF NOT EXISTS "SyncLog" (
     `ALTER TABLE "Reservation" ADD COLUMN "grossCents" INTEGER`,
     `ALTER TABLE "Reservation" ADD COLUMN "hostFeeCents" INTEGER`,
     `ALTER TABLE "Reservation" ADD COLUMN "cleaningFeeCents" INTEGER`,
+    `ALTER TABLE "Reservation" ADD COLUMN "payoutDate" TEXT`,
     `ALTER TABLE "Reservation" ADD COLUMN "payoutCents" INTEGER`,
     `CREATE TABLE IF NOT EXISTS "Expense" (
         "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,

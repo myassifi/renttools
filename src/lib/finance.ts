@@ -79,6 +79,9 @@ export interface MoneyStay {
   hostFeeCents?: number | null;
   cleaningFeeCents?: number | null;
   payoutCents?: number | null;
+  // YYYY-MM-DD the platform posted the payout (cash date). When set,
+  // the month buckets use it instead of the check-in month.
+  payoutDate?: string | null;
 }
 
 export interface MoneyExpense {
@@ -99,9 +102,11 @@ export interface FinanceMonth {
 }
 
 /**
- * Bucket income by CHECK-IN month and expenses by their date's month.
- * When payoutCents is null but gross exists, net falls back to gross so
- * hosts who only enter the guest price still get a meaningful number.
+ * Bucket income by PAYOUT month (when a payout date is known — the cash
+ * view) and expenses by their date's month. Stays without a payout date
+ * fall back to their check-in month. When payoutCents is null but gross
+ * exists, net falls back to gross so hosts who only enter the guest
+ * price still get a meaningful number.
  */
 export function aggregateFinance(
   stays: MoneyStay[],
@@ -129,7 +134,7 @@ export function aggregateFinance(
     const gross = s.grossCents ?? 0;
     const payout = s.payoutCents ?? 0;
     if (gross === 0 && payout === 0 && !s.hostFeeCents && !s.cleaningFeeCents) continue;
-    const b = bucket(monthKey(s.checkIn));
+    const b = bucket(monthKey(s.payoutDate || s.checkIn));
     b.grossCents += gross;
     b.hostFeeCents += s.hostFeeCents ?? 0;
     b.cleaningFeeCents += s.cleaningFeeCents ?? 0;

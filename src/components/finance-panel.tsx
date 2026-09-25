@@ -96,7 +96,7 @@ const CATEGORY_LABELS: Record<ExpenseCategory, Record<Locale, string>> = {
 const COPY: Record<Locale, CopyShape> = {
   en: {
     title: "Income & expenses",
-    subtitle: (cur) => `All amounts in ${cur}. Income is bucketed by check-in month.`,
+    subtitle: (cur) => `All amounts in ${cur}. Payouts bucket by the month Airbnb paid them (check-in month when unknown).`,
     payout: "Payout",
     expenses: "Expenses",
     net: "Net",
@@ -413,6 +413,7 @@ export function FinancePanel({ property, targetProperties, buckets }: FinancePan
       hostFeeCents?: number | null;
       cleaningFeeCents?: number | null;
       payoutCents?: number | null;
+      payoutDate?: string | null;
     }[] = [];
     let unpriced = 0;
     for (const p of targetProperties) {
@@ -428,6 +429,7 @@ export function FinancePanel({ property, targetProperties, buckets }: FinancePan
             hostFeeCents: r.hostFeeCents,
             cleaningFeeCents: r.cleaningFeeCents,
             payoutCents: r.payoutCents,
+            payoutDate: r.payoutDate,
           });
         } else {
           unpriced++;
