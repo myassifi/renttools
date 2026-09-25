@@ -104,6 +104,7 @@ interface Preview {
   listings: PreviewListing[];
   currencies: string[];
   reservationRows: number;
+  suggestedMapping?: Record<string, number>;
 }
 
 export function CsvImport({ properties, onDone }: { properties: Property[]; onDone?: () => void }) {
@@ -133,9 +134,11 @@ export function CsvImport({ properties, onDone }: { properties: Property[]; onDo
       if (!res.ok) throw new Error(data.error || "preview failed");
       setCsvText(text);
       setPreview(data);
-      // Auto-map exact property-name matches; host reviews the rest.
-      const auto: Record<string, number> = {};
+      // Auto-map: server-remembered listing→property pairs first, then
+      // exact property-name matches; host reviews the rest.
+      const auto: Record<string, number> = { ...(data.suggestedMapping ?? {}) };
       for (const l of data.listings as PreviewListing[]) {
+        if (auto[l.listing]) continue;
         const hit = properties.find(
           (p) => p.name.trim().toLowerCase() === l.listing.trim().toLowerCase(),
         );

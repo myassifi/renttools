@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { canManageProperty } from "@/lib/ownership";
+import { canManageProperty, listAccessiblePropertyIds } from "@/lib/ownership";
 import { parseAirbnbCsv } from "@/lib/airbnb-csv";
 import { parseReservationDate, reservationDayKey } from "@/lib/reservation-dates";
 
@@ -46,12 +46,22 @@ export async function POST(request: NextRequest) {
     }
 
     if (!body?.commit) {
+      // Listings previously mapped are remembered on the Property row —
+      // pre-fill them so the host only picks for brand-new listings.
+      const accessibleIds = await listAccessiblePropertyIds(session.userId, session.role);
+      const props = await prisma.property.findMany({
+        where: { id: { in: accessibleIds }, airbnbListing: { in: parsed.reservations.map((r) => r.listing) } },
+        select: { id: true, airbnbListing: true },
+      });
+      const suggestedMapping: Record<string, number> = {};
+      for (const p of props) if (p.airbnbListing) suggestedMapping[p.airbnbListing] = p.id;
       return NextResponse.json({
         listings: Object.entries(parsed.listingCounts).map(([listing, count]) => ({ listing, count })),
         currencies: parsed.currencies,
         reservationRows: parsed.reservations.length,
         skippedPayoutRows: parsed.skippedPayoutRows,
         skippedCoHostRows: parsed.skippedCoHostRows,
+        suggestedMapping,
       });
     }
 
@@ -175,6 +185,14 @@ export async function POST(request: NextRequest) {
         },
       });
       coHostExpenses++;
+    }
+
+    // Remember the listing→property mapping for next time.
+    for (const [listing, propertyId] of listingToProperty) {
+      await prisma.property.updateMany({
+        where: { id: propertyId, airbnbListing: { not: listing } },
+        data: { airbnbListing: listing },
+      });
     }
 
     await logAudit(session.userId, "create", "reservation", 0, {
