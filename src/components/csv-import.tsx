@@ -201,7 +201,7 @@ export function CsvImport({ properties, onDone }: { properties: Property[]; onDo
               type="button"
               disabled={busy}
               onClick={() => fileRef.current?.click()}
-              className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className="rounded-lg bg-[var(--m-accent)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--m-accent-2)] disabled:opacity-50 transition-colors"
             >
               {busy ? c.reading : c.chooseFile}
             </button>
@@ -245,7 +245,7 @@ export function CsvImport({ properties, onDone }: { properties: Property[]; onDo
                 type="button"
                 disabled={busy || mappedCount === 0}
                 onClick={() => void commit()}
-                className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                className="rounded-lg bg-[var(--m-accent)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--m-accent-2)] disabled:opacity-50 transition-colors"
               >
                 {busy ? c.importing : c.importCta(mappedCount)}
               </button>
