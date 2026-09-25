@@ -108,13 +108,13 @@ export interface CalendarEvent {
 
 export const EXPENSE_CATEGORIES = [
   "cleaning",
-  "supplies",
-  "utilities",
-  "maintenance",
-  "platform-fees",
-  "taxes",
-  "rent",
+  "wifi",
+  "water",
+  "electricity",
+  "gas-bottle",
   "insurance",
+  "supplies",
+  "maintenance",
   "other",
 ] as const;
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];

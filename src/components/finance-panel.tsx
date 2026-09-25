@@ -80,13 +80,13 @@ interface CopyShape {
 
 const CATEGORY_LABELS: Record<ExpenseCategory, Record<Locale, string>> = {
   cleaning: { en: "Cleaning", ru: "Уборка", de: "Reinigung", fr: "Ménage", es: "Limpieza" },
-  supplies: { en: "Supplies", ru: "Расходники", de: "Verbrauchsmaterial", fr: "Fournitures", es: "Suministros" },
-  utilities: { en: "Utilities", ru: "Коммунальные", de: "Nebenkosten", fr: "Charges", es: "Suministros" },
-  maintenance: { en: "Maintenance", ru: "Обслуживание", de: "Instandhaltung", fr: "Maintenance", es: "Mantenimiento" },
-  "platform-fees": { en: "Platform fees", ru: "Комиссии платформ", de: "Plattformgebühren", fr: "Frais de plateforme", es: "Comisiones" },
-  taxes: { en: "Taxes", ru: "Налоги", de: "Steuern", fr: "Impôts", es: "Impuestos" },
-  rent: { en: "Rent", ru: "Аренда", de: "Miete", fr: "Loyer", es: "Alquiler" },
+  wifi: { en: "Wi-Fi", ru: "Wi-Fi", de: "WLAN", fr: "Wi-Fi", es: "Wi-Fi" },
+  water: { en: "Water", ru: "Вода", de: "Wasser", fr: "Eau", es: "Agua" },
+  electricity: { en: "Electricity", ru: "Электричество", de: "Strom", fr: "Électricité", es: "Electricidad" },
+  "gas-bottle": { en: "Gas bottle", ru: "Газовый баллон", de: "Gasflasche", fr: "Bouteille de gaz", es: "Bombona de gas" },
   insurance: { en: "Insurance", ru: "Страховка", de: "Versicherung", fr: "Assurance", es: "Seguro" },
+  supplies: { en: "Supplies", ru: "Расходники", de: "Verbrauchsmaterial", fr: "Fournitures", es: "Suministros" },
+  maintenance: { en: "Maintenance", ru: "Обслуживание", de: "Instandhaltung", fr: "Maintenance", es: "Mantenimiento" },
   other: { en: "Other", ru: "Прочее", de: "Sonstiges", fr: "Autre", es: "Otros" },
 };
 

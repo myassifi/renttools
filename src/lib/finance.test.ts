@@ -94,7 +94,7 @@ describe("aggregateFinance", () => {
   it("skips money-free stays but still creates expense-only months", () => {
     const months = aggregateFinance(
       [{ checkIn: "2026-08-10", propertyId: 1 }],
-      [{ date: "2026-07-01", propertyId: 1, category: "rent", amountCents: 90000 }],
+      [{ date: "2026-07-01", propertyId: 1, category: "electricity", amountCents: 90000 }],
     );
     expect(months.has("2026-08")).toBe(false);
     expect(months.get("2026-07")!.netCents).toBe(-90000);
