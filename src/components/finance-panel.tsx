@@ -49,6 +49,9 @@ interface CopyShape {
   expenseSingular: string;
   netLabel: string;
   categoryBreakdown: string;
+  breakdownTitle: string;
+  colMonth: string;
+  yearTotal: (year: string) => string;
   listTitle: string;
   addExpense: string;
   editExpense: string;
@@ -109,6 +112,9 @@ const COPY: Record<Locale, CopyShape> = {
     expenseSingular: "Expenses",
     netLabel: "Net",
     categoryBreakdown: "By category",
+    breakdownTitle: "Monthly & yearly breakdown",
+    colMonth: "Month",
+    yearTotal: (y) => `Total ${y}`,
     listTitle: "Expenses",
     addExpense: "Add expense",
     editExpense: "Edit expense",
@@ -156,6 +162,9 @@ const COPY: Record<Locale, CopyShape> = {
     expenseSingular: "Расходы",
     netLabel: "Чистыми",
     categoryBreakdown: "По категориям",
+    breakdownTitle: "Помесячно и по годам",
+    colMonth: "Месяц",
+    yearTotal: (y) => `Итого ${y}`,
     listTitle: "Расходы",
     addExpense: "Добавить расход",
     editExpense: "Изменить расход",
@@ -203,6 +212,9 @@ const COPY: Record<Locale, CopyShape> = {
     expenseSingular: "Ausgaben",
     netLabel: "Netto",
     categoryBreakdown: "Nach Kategorie",
+    breakdownTitle: "Monatlich & jährlich",
+    colMonth: "Monat",
+    yearTotal: (y) => `Summe ${y}`,
     listTitle: "Ausgaben",
     addExpense: "Ausgabe hinzufügen",
     editExpense: "Ausgabe bearbeiten",
@@ -250,6 +262,9 @@ const COPY: Record<Locale, CopyShape> = {
     expenseSingular: "Dépenses",
     netLabel: "Net",
     categoryBreakdown: "Par catégorie",
+    breakdownTitle: "Détail mensuel et annuel",
+    colMonth: "Mois",
+    yearTotal: (y) => `Total ${y}`,
     listTitle: "Dépenses",
     addExpense: "Ajouter une dépense",
     editExpense: "Modifier la dépense",
@@ -297,6 +312,9 @@ const COPY: Record<Locale, CopyShape> = {
     expenseSingular: "Gastos",
     netLabel: "Neto",
     categoryBreakdown: "Por categoría",
+    breakdownTitle: "Desglose mensual y anual",
+    colMonth: "Mes",
+    yearTotal: (y) => `Total ${y}`,
     listTitle: "Gastos",
     addExpense: "Añadir gasto",
     editExpense: "Editar gasto",
@@ -455,6 +473,33 @@ export function FinancePanel({ property, targetProperties, buckets }: FinancePan
     );
     const pastDays = buckets.filter((b) => b.isPast).reduce((s, b) => s + b.totalDays, 0);
     return financeTotals(visible, occupiedNights, pastDays);
+  }, [buckets, monthsMap]);
+
+  // Monthly rows newest-first, with a subtotal row closing each year.
+  const monthRows = useMemo(() => {
+    const rows: Array<
+      | { kind: "month"; key: string; label: string; income: number; expense: number; net: number }
+      | { kind: "year"; key: string; year: string; income: number; expense: number; net: number }
+    > = [];
+    let year = "";
+    let yi = 0, ye = 0, yn = 0;
+    const flushYear = () => {
+      if (year) rows.push({ kind: "year", key: `Y${year}`, year, income: yi, expense: ye, net: yn });
+      year = ""; yi = 0; ye = 0; yn = 0;
+    };
+    for (const b of [...buckets].reverse()) {
+      const m = monthsMap.get(b.key);
+      const y = b.key.slice(0, 4);
+      if (year && y !== year) flushYear();
+      year = y;
+      const income = m?.payoutCents ?? 0;
+      const expense = m?.expenseCents ?? 0;
+      const net = m?.netCents ?? 0;
+      yi += income; ye += expense; yn += net;
+      rows.push({ kind: "month", key: b.key, label: b.label, income, expense, net });
+    }
+    flushYear();
+    return rows;
   }, [buckets, monthsMap]);
 
   const categoryTotals = useMemo(() => {
@@ -645,12 +690,50 @@ export function FinancePanel({ property, targetProperties, buckets }: FinancePan
           </ResponsiveContainer>
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          <span className="inline-flex items-center rounded-full bg-[var(--m-accent)] px-2.5 py-0.5 text-[11px] font-semibold text-white">
+          <span className="inline-flex items-center rounded-full bg-emerald-500 px-2.5 py-0.5 text-[11px] font-semibold text-white">
             {c.income}
           </span>
           <span className="inline-flex items-center rounded-full bg-rose-500 px-2.5 py-0.5 text-[11px] font-semibold text-white">
             {c.expenseSingular}
           </span>
+        </div>
+      </div>
+
+      {/* Monthly + yearly breakdown */}
+      <div className="rounded-xl border border-[var(--line)] bg-[var(--bg-2)] p-4">
+        <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[var(--ink-4)]">
+          {c.breakdownTitle}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-[var(--line)] text-left text-[10px] uppercase tracking-wider text-[var(--ink-4)]">
+                <th className="py-1.5 pr-3 font-medium">{c.colMonth}</th>
+                <th className="py-1.5 pr-3 font-medium text-right">{c.income}</th>
+                <th className="py-1.5 pr-3 font-medium text-right">{c.expenseSingular}</th>
+                <th className="py-1.5 font-medium text-right">{c.netLabel}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthRows.map((r) =>
+                r.kind === "year" ? (
+                  <tr key={r.key} className="border-y border-[var(--line)] bg-[var(--bg)] font-semibold text-[var(--ink)]">
+                    <td className="py-1.5 pr-3">{c.yearTotal(r.year)}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums text-emerald-600">{fmt(r.income)}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums text-rose-500">{fmt(r.expense)}</td>
+                    <td className={`py-1.5 text-right tabular-nums ${r.net >= 0 ? "text-emerald-600" : "text-rose-500"}`}>{fmt(r.net)}</td>
+                  </tr>
+                ) : (
+                  <tr key={r.key} className="text-[var(--ink-2)]">
+                    <td className="py-1.5 pr-3">{r.label}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">{r.income ? fmt(r.income) : "—"}</td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">{r.expense ? fmt(r.expense) : "—"}</td>
+                    <td className={`py-1.5 text-right tabular-nums ${r.net < 0 ? "text-rose-500" : ""}`}>{r.income || r.expense ? fmt(r.net) : "—"}</td>
+                  </tr>
+                ),
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
