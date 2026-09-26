@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
@@ -537,6 +537,22 @@ export function ReservationView({
       setGuestFormGenerating(false);
       refreshGuestFormSubmission();
     }
+  };
+
+  const guestFormShareUrl = useMemo(
+    () =>
+      guestFormSubmission?.shareUrl
+        ? `${window.location.origin}${guestFormSubmission.shareUrl}`
+        : null,
+    [guestFormSubmission?.shareUrl],
+  );
+
+  const openGuestFormOnWhatsApp = () => {
+    if (!guestFormShareUrl) return;
+    const text = encodeURIComponent(
+      `Hi, please fill out your pre-arrival form: ${guestFormShareUrl}`,
+    );
+    window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer");
   };
 
   const guestFormStatusLabel = (): string | null => {
@@ -1299,6 +1315,18 @@ export function ReservationView({
                     ? "Copy link again"
                     : "Copy form link"}
           </Button>
+          {guestFormShareUrl && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={openGuestFormOnWhatsApp}
+              className="rounded-lg text-xs"
+              title="Share on WhatsApp"
+            >
+              WhatsApp
+            </Button>
+          )}
           {guestFormSubmission?.status === "OWNER_REVIEW_REQUIRED" && (
             <Button
               type="button"
@@ -1329,18 +1357,21 @@ export function ReservationView({
           key note surfaces the feature without nagging: a host who
           doesn't want it just reads past it. */}
       {guestFormChecked && !hasGuestForm && (
-        <div className="rounded-xl border border-dashed border-border/50 px-4 py-2.5">
-          <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">{hint.title}</span>{" "}
-            {hint.before}{" "}
+        <div className="rounded-xl border border-dashed border-border/50 bg-card/40 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">{hint.title}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {hint.before} {hint.link}. {hint.after}
+              </p>
+            </div>
             <Link
               href={`/dashboard?property=${reservation.propertyId}&view=guest-form`}
-              className="font-medium text-[var(--m-accent)] underline underline-offset-2 hover:text-[var(--m-accent-2)]"
+              className="shrink-0 rounded-lg bg-[var(--m-accent)] px-3 py-1.5 text-center text-xs font-medium text-white hover:bg-[var(--m-accent-2)]"
             >
-              {hint.link}
+              Set up pre-arrival form
             </Link>
-            {hint.after}
-          </p>
+          </div>
         </div>
       )}
 
