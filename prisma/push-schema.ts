@@ -1167,6 +1167,16 @@ CREATE INDEX IF NOT EXISTS "GuestFormSubmission_reservationId_idx" ON "GuestForm
 CREATE INDEX IF NOT EXISTS "GuestFormSubmission_templateId_idx" ON "GuestFormSubmission"("templateId");
 CREATE INDEX IF NOT EXISTS "GuestFormSubmission_status_idx" ON "GuestFormSubmission"("status");
 
+CREATE TABLE IF NOT EXISTS "ReceiptToken" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "token" TEXT NOT NULL,
+    "reservationId" INTEGER NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ReceiptToken_reservationId_fkey" FOREIGN KEY ("reservationId") REFERENCES "Reservation" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "ReceiptToken_token_key" ON "ReceiptToken"("token");
+CREATE INDEX IF NOT EXISTS "ReceiptToken_reservationId_idx" ON "ReceiptToken"("reservationId");
+
 CREATE TABLE IF NOT EXISTS "EVisitorReceipt" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "reservationId" INTEGER NOT NULL,

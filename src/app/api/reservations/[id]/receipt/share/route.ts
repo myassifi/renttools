@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { canManageProperty } from "@/lib/ownership";
-import { renderReceiptHtml } from "@/lib/receipt-html";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Print-ready guest receipt (HTML). Hosts open this directly and can print
- * to PDF, or click the share buttons to WhatsApp/SMS/email a public link.
- * Public access is gated by a per-reservation token via /receipt/<token>.
+ * POST /api/reservations/[id]/receipt/share
+ *
+ * Mint (or reuse) a public token for this reservation's receipt.
+ * Hosts use the returned URL to WhatsApp/SMS/email a receipt to a guest;
+ * the guest can open it without a RentTools login.
  */
-export async function GET(
+export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -29,7 +31,7 @@ export async function GET(
 
     const reservation = await prisma.reservation.findUnique({
       where: { id: numId },
-      include: { property: { include: { user: { select: { currency: true, username: true } } } } },
+      select: { id: true, propertyId: true },
     });
     if (
       !reservation ||
@@ -38,18 +40,23 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const base = process.env.PUBLIC_APP_URL || new URL(request.url).origin;
-    const token = await prisma.receiptToken.findFirst({
+    let token = await prisma.receiptToken.findFirst({
       where: { reservationId: numId },
+      select: { token: true },
       orderBy: { createdAt: "desc" },
     });
-    const publicUrl = token ? `${base.replace(/\/$/, "")}/receipt/${token.token}` : null;
 
-    const html = renderReceiptHtml(reservation, { publicUrl, showShareButtons: true });
-    return new NextResponse(html, {
-      status: 200,
-      headers: { "Content-Type": "text/html; charset=utf-8" },
-    });
+    if (!token) {
+      const newToken = randomBytes(24).toString("hex");
+      await prisma.receiptToken.create({
+        data: { token: newToken, reservationId: numId },
+      });
+      token = { token: newToken };
+    }
+
+    const base = process.env.PUBLIC_APP_URL || new URL(request.url).origin;
+    const shareUrl = `${base.replace(/\/$/, "")}/receipt/${token.token}`;
+    return NextResponse.json({ shareUrl });
   } catch (err) {
     console.error("Route error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

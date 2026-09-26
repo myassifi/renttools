@@ -679,6 +679,16 @@ model GuestFormSubmission {
   @@index([status])
 }
 
+model ReceiptToken {
+  id            Int          @id @default(autoincrement())
+  token         String       @unique
+  reservationId Int
+  reservation   Reservation  @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+
+  @@index([reservationId])
+}
+
 model EVisitorReceipt {
   id                  Int         @id @default(autoincrement())
   reservationId       Int
